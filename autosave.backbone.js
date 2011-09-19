@@ -1,11 +1,17 @@
-(function(window, document, $, undefined) {
+(function(window, $, undefined) {
     $.fn.autosaveable = function(settings) {
         if (settings !== undefined) {
             if (settings.uid === undefined) {
                 return;
             }
+            if (settings.bind !== undefined) {
+                var bindings = settings.bind;
+            }
+        } else {
+            return;
         }
-        var uid = settings.uid;
+        var uid = settings.uid,
+            bindings = settings.bind || [];
         this.each(function(i) {
             var delay = (function(){
                     var timer = 0;
@@ -13,17 +19,19 @@
                         clearTimeout(timer);
                         timer = setTimeout.apply(window, arguments);
                     };
-                })();
+                })(),
                 $this = $(this),
-                uid = uid + i,
+                thisUid = uid + i,
                 state = {
-                    uid: uid,
+                    uid: thisUid,
                     text: getState(uid)
                 };
 
             if (state.text !== '') {
                 $this.val(state.text);
             }
+
+            setBindings(bindings, state.uid);
 
             $this.bind(
                 'keyup.autosaveable',
@@ -65,9 +73,27 @@
         return window.localStorage.removeItem(genKey(uid));
     }
 
+    function setBindings(bindings, uid) {
+        for (i in bindings) {
+            var watchObject = bindings[i][0],
+                event = bindings[i][1],
+                action = bindings[i][2];
+
+            watchObject.bind(event, function () {
+                if (action === 'removeState') {
+                    removeState(uid);
+                }
+            });
+        }
+    }
+
     function saveState(uid, text) {
         var key = genKey(uid);
 
-        return window.localStorage.setItem(key, text);
+        if (text !== '') {
+            return window.localStorage.setItem(key, text);
+        } else {
+            return removeState(uid);
+        }
     }
-})(this, document, jQuery);
+})(this, jQuery);
